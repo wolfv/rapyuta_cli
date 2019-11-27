@@ -33,9 +33,12 @@ def get_url(endpoint):
         return "https://gaapiserver.apps.rapyuta.io/api/{}".format(endpoint)
     return "https://gacatalog.apps.rapyuta.io/{}".format(endpoint)
 
-def find_project(project):
+def find_project(project=None):
     me = requests.get(get_url('user/me/get'), headers=HEADERS)
     me = me.json()
+
+    if not project:
+        return me['projects'][0]['guid']
 
     # find project GUID
     for p in me['projects']:
@@ -111,9 +114,10 @@ def deployments_list(project):
     print(table.table)
 
 @click.command(name='list')
-def catalog_list():
+@click.option('--project', default=None)
+def catalog_list(project):
     H = HEADERS
-    H['project'] = 'project-klscuqrfgtprexcukoonertc'
+    H['project'] = find_project(project)
     catalog = requests.get(get_url('v2/catalog'), headers=H)
     catalog = catalog.json()
     # pprint.pprint(catalog)
