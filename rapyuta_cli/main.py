@@ -6,6 +6,9 @@ import os
 import time
 import click
 
+from colorama import init, Fore, Back, Style
+init()
+
 from terminaltables import SingleTable
 from . import utils
 import dateutil.parser
@@ -79,47 +82,53 @@ def deployments_list(project):
     H.update(project_header)
     deployments = requests.get(get_url('deployment/list'), headers=H)
     deployments = deployments.json()
+    # pprint.pprint(deployments)
+    t_header = [['Name', 'Package', 'Created', 'Deleted', 'Phase']]
+
+    def format_phase(phase):
+        if phase == 'Deployment stopped':
+            return Fore.RED + phase + Style.RESET_ALL
+        elif phase == 'Succeeded':
+            return Fore.GREEN + phase + Style.RESET_ALL
+        elif phase == 'Partially deprovisioned':
+            return Fore.YELLOW + phase + Style.RESET_ALL
+        else:
+            return phase
+
+    data = []
     for d in deployments:
-        created = utils.pretty_date(dateutil.parser.parse(d['CreatedAt']))
+        raw_create = dateutil.parser.parse(d['CreatedAt'])
+        created = utils.pretty_date(raw_create)
         if d['DeletedAt']:
             deleted = utils.pretty_date(dateutil.parser.parse(d['DeletedAt']))
         else:
             deleted = ""
-        data = [
-            ['Name', d['name']],
-            ['Created At', created],
-            ['Deleted At', deleted],
-        ]
-        table = SingleTable(data)
-        print(table.table)
+        data.append([d['name'], d['packageName'], created, deleted, format_phase(d['phase']), raw_create])
 
-
-    # df = pd.read_json(deployments.text)
-    # with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
-    #     print(df)
-
-    # pprint.pprint(deployments.json())
+    data = sorted(data, key=lambda x: x[-1])
+    data = [row[:-1] for row in data] # remove the sort key
+    table = SingleTable(t_header + data)
+    print(table.table)
 
 @click.command(name='list')
 def catalog_list():
     H = HEADERS
+    H['project'] = 'project-klscuqrfgtprexcukoonertc'
     catalog = requests.get(get_url('v2/catalog'), headers=H)
-    catalog = deployments.json()
-    pprint.pprint(catalog)
-    return
-    for d in deployments:
-        created = utils.pretty_date(dateutil.parser.parse(d['CreatedAt']))
-        if d['DeletedAt']:
-            deleted = utils.pretty_date(dateutil.parser.parse(d['DeletedAt']))
-        else:
-            deleted = ""
-        data = [
-            ['Name', d['name']],
-            ['Created At', created],
-            ['Deleted At', deleted],
-        ]
-        table = SingleTable(data)
-        print(table.table)
+    catalog = catalog.json()
+    # pprint.pprint(catalog)
+    t_headers = [['Name', 'Created', 'Version']]
+    data = []
+    for d in catalog['services']:
+        raw_create = dateutil.parser.parse(d['metadata']['creationDate'])
+        created = utils.pretty_date(raw_create)
+        data.append([d['name'], created, d['metadata']['packageVersion'], raw_create])
+
+    data = sorted(data, key=lambda x: x[0] + x[2])
+    data = [row[:-1] for row in data]
+
+    table = SingleTable(t_headers + data)
+    print(table.table)
 
 def print_response(res):
     print('HTTP/1.1 {status_code}\n{headers}\n\n{body}'.format(

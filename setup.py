@@ -5,7 +5,7 @@ setup(
     version='0.1',
     py_modules=['rapyuta_cli'],
     install_requires=[
-        'click', 'requests'
+        'click', 'requests', 'terminaltables', 'colorama'
     ],
     entry_points= {
         'console_scripts': [
